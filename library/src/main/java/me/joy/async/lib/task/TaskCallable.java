@@ -1,6 +1,5 @@
 package me.joy.async.lib.task;
 
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -9,29 +8,24 @@ import android.text.TextUtils;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import me.joy.async.lib.util.Util;
-
 
 /**
  * Created by joybar on 2018/5/10.
  */
 
-public abstract class TaskCallable<TProgress, TResult> implements Callable {
+public  class TaskCallable<TProgress, TResult> implements Callable {
 
 
     private static final int MESSAGE_POST_RESULT = 0x1;
     private static final int MESSAGE_POST_PROGRESS = 0x2;
-    protected String name;
+    private String name;
     private static InternalHandler sHandler;
-
     private final AtomicBoolean mCancelled = new AtomicBoolean();
+    private final AsynchronousTask asynchronousTask;
 
-    public TaskCallable(String format, Object... args) {
-        this.name = Util.format(format, args);
 
-    }
-
-    public TaskCallable() {
+    public TaskCallable(AsynchronousTask asynchronousTask) {
+        this.asynchronousTask =asynchronousTask;
     }
 
     public final boolean isCancelled() {
@@ -51,7 +45,7 @@ public abstract class TaskCallable<TProgress, TResult> implements Callable {
             Thread.currentThread().setName(name);
         }
         try {
-            result = onDoInBackground();
+            result = (TResult) asynchronousTask.doInBackground();
         } catch (Throwable tr){
             mCancelled.set(true);
             throw tr;
@@ -64,26 +58,18 @@ public abstract class TaskCallable<TProgress, TResult> implements Callable {
     }
 
 
-    protected abstract TResult onDoInBackground();
 
-    protected void onProduceProgressUpdate(TProgress... values) {
-
-    }
-
-    protected void onPostProduce(TResult result) {
-
-    }
 
     protected final void publishProgress(TProgress... values) {
         if (!isCancelled()) {
             getMainHandler().obtainMessage(MESSAGE_POST_PROGRESS,
-                    new TaskCallableResult<TProgress>(this, values)).sendToTarget();
+                    new TaskCallableResult<TProgress>(asynchronousTask,this, values)).sendToTarget();
         }
     }
 
     private void postResult(TResult result) {
         @SuppressWarnings("unchecked") Message message = getMainHandler().obtainMessage
-                (MESSAGE_POST_RESULT, new TaskCallableResult<TResult>(this, result));
+                (MESSAGE_POST_RESULT, new TaskCallableResult<TResult>(asynchronousTask,this, result));
         message.sendToTarget();
     }
 
@@ -101,19 +87,19 @@ public abstract class TaskCallable<TProgress, TResult> implements Callable {
                     result.mTask.finish(result.mData[0]);
                     break;
                 case MESSAGE_POST_PROGRESS:
-                    result.mTask.onProduceProgressUpdate(result.mData);
+                    result.mAsynchronousTask.onProgressUpdate(result.mData);
                     break;
             }
         }
     }
 
     private void finish(TResult result) {
-        onPostProduce(result);
+        asynchronousTask.onPostExecute(result);
     }
 
 
     private static Handler getMainHandler() {
-        synchronized (AsyncTask.class) {
+        synchronized (AsynchronousTask.class) {
             if (sHandler == null) {
                 sHandler = new InternalHandler(Looper.getMainLooper());
             }
@@ -125,8 +111,10 @@ public abstract class TaskCallable<TProgress, TResult> implements Callable {
     private static class TaskCallableResult<Data> {
         final TaskCallable mTask;
         final Data[] mData;
+        final AsynchronousTask mAsynchronousTask;
 
-        TaskCallableResult(TaskCallable task, Data... data) {
+        TaskCallableResult(AsynchronousTask asynchronousTask,TaskCallable task, Data... data) {
+            mAsynchronousTask = asynchronousTask;
             mTask = task;
             mData = data;
         }

@@ -15,7 +15,6 @@ public abstract class AsynchronousTask<TProgress, TResult> {
     TaskCallable mTaskCallable;
     TaskRunnable mTaskRunnable;
 
-
     protected void onPreExecute() {
 
     }
@@ -58,53 +57,14 @@ public abstract class AsynchronousTask<TProgress, TResult> {
 
     public void produceWithCallable() {
         onPreExecute();
-
-        mTaskCallable = new TaskCallable<TProgress, TResult>() {
-
-            @Override
-            protected TResult onDoInBackground() {
-                return doInBackground();
-            }
-
-            @Override
-            protected void onProduceProgressUpdate(TProgress[] values) {
-                super.onProduceProgressUpdate(values);
-                onProgressUpdate(values);
-            }
-
-            @Override
-            protected void onPostProduce(TResult tResult) {
-                super.onPostProduce(tResult);
-                onPostExecute(tResult);
-            }
-        };
+        mTaskCallable = new TaskCallable<TProgress, TResult>(this);
         mFuture = new FutureTask(mTaskCallable);
         ProductLineDispatcher.getInstance().submit(mFuture);
     }
 
     public void produceWithRunnable() {
-
         onPreExecute();
-        mTaskRunnable = new TaskRunnable<TProgress, TResult>() {
-
-
-            @Override
-            protected TResult onDoInBackground() {
-                return doInBackground();
-            }
-
-            @Override
-            protected void onProduceProgressUpdate(TProgress[] values) {
-                super.onProduceProgressUpdate(values);
-                onProgressUpdate(values);
-            }
-
-            @Override
-            protected void onPostProduce(TResult tResult) {
-                super.onPostProduce(tResult);
-                onPostExecute(tResult);
-            }
-        };
+        mTaskRunnable = new TaskRunnable<TProgress, TResult>(this);
         mFuture = new FutureTask(mTaskRunnable, null);
         ProductLineDispatcher.getInstance().submit(mFuture);
     }
