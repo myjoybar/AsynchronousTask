@@ -1,6 +1,5 @@
 package me.joy.async.lib.task;
 
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -113,7 +112,7 @@ public abstract class TaskCallable<TProgress, TResult> implements Callable {
 
 
     private static Handler getMainHandler() {
-        synchronized (AsyncTask.class) {
+        synchronized (TaskCallable.class) {
             if (sHandler == null) {
                 sHandler = new InternalHandler(Looper.getMainLooper());
             }
