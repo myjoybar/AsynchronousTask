@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by joybar on 2018/5/11.
  */
 
-public class ProductLineThreadPool {
+public class ThreadPoolWithCore {
 	private static final String TAG = "ProductLineThreadPool";
 	private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
 	// We want at least 2 threads and at most 4 threads in the core pool,

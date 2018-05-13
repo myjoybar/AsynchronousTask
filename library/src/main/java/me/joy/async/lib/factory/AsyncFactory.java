@@ -1,6 +1,9 @@
 package me.joy.async.lib.factory;
 
 
+import java.util.HashMap;
+import java.util.Map;
+
 import me.joy.async.lib.task.AsynchronousTask;
 
 /**
@@ -9,6 +12,9 @@ import me.joy.async.lib.task.AsynchronousTask;
 
 public class AsyncFactory {
     public static String TAG = "AsyncFactory";
+    public static final int MAX_ASYNC_REQUESTS = 64;
+    public final static Map<AsynchronousTask,AsynchronousTask> RUNNING_ASYNC_REQUESTS = new HashMap<>();
+    public final static  Map<AsynchronousTask,AsynchronousTask> READY_ASYNC_REQUESTS = new HashMap<>();
 
     public AsyncFactory() {
 

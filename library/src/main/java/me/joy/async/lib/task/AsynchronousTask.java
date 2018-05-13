@@ -1,9 +1,12 @@
 package me.joy.async.lib.task;
 
 
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.FutureTask;
 
-import me.joy.async.lib.pool.ProductLineDispatcher;
+import me.joy.async.lib.factory.AsyncFactory;
+import me.joy.async.lib.pool.ThreadPoolSelector;
 
 
 /**
@@ -11,9 +14,10 @@ import me.joy.async.lib.pool.ProductLineDispatcher;
  */
 
 public abstract class AsynchronousTask<TProgress, TResult> {
+
     private FutureTask<TResult> mFuture;
     TaskCallable mTaskCallable;
-    TaskRunnable mTaskRunnable;
+    boolean isRemoved;
 
     protected void onPreExecute() {
 
@@ -34,39 +38,78 @@ public abstract class AsynchronousTask<TProgress, TResult> {
     }
 
     public final void publishProgress(TProgress... values) {
-        if(null!=mTaskCallable){
+        if (null != mTaskCallable) {
             mTaskCallable.publishProgress(values);
         }
-        if(null!=mTaskRunnable){
-            mTaskRunnable.publishProgress(values);
-        }
+
 
     }
 
     public final boolean cancel(boolean mayInterruptIfRunning) {
+        boolean flag = false;
         if (null != mFuture) {
-            boolean flag = mFuture.cancel(mayInterruptIfRunning);
+            flag = mFuture.cancel(mayInterruptIfRunning);
+            mTaskCallable.cancel();
             if (flag) {
                 this.onCancelled();
             }
-            return flag;
         }
-        return false;
+        if (AsyncFactory.RUNNING_ASYNC_REQUESTS.containsValue(this)) {
+            AsyncFactory.RUNNING_ASYNC_REQUESTS.remove(this);
+        }
+        if (AsyncFactory.READY_ASYNC_REQUESTS.containsValue(this)) {
+
+            AsyncFactory.READY_ASYNC_REQUESTS.remove(this);
+        }
+        isRemoved = true;
+        return flag;
     }
 
 
-    public void produceWithCallable() {
-        onPreExecute();
-        mTaskCallable = new TaskCallable<TProgress, TResult>(this);
-        mFuture = new FutureTask(mTaskCallable);
-        ProductLineDispatcher.getInstance().submit(mFuture);
+    synchronized public void produceWithCallable() {
+        if (AsyncFactory.RUNNING_ASYNC_REQUESTS.size() < AsyncFactory.MAX_ASYNC_REQUESTS) {
+            if (this.isRemoved) {
+                return;
+            }
+            AsyncFactory.RUNNING_ASYNC_REQUESTS.put(this, this);
+            this.onPreExecute();
+            mTaskCallable = new TaskCallable<TProgress, TResult>(this);
+            mFuture = new FutureTask(mTaskCallable);
+            ThreadPoolSelector.getInstance().submit(mFuture);
+        } else {
+            AsyncFactory.READY_ASYNC_REQUESTS.put(this, this);
+        }
+
     }
 
-    public void produceWithRunnable() {
-        onPreExecute();
-        mTaskRunnable = new TaskRunnable<TProgress, TResult>(this);
-        mFuture = new FutureTask(mTaskRunnable, null);
-        ProductLineDispatcher.getInstance().submit(mFuture);
+
+    public void promoteCalls() {
+        AsyncFactory.RUNNING_ASYNC_REQUESTS.remove(this);
+        if (AsyncFactory.RUNNING_ASYNC_REQUESTS.size() >= AsyncFactory.MAX_ASYNC_REQUESTS) {
+            return;
+        }
+
+
+        Iterator<Map.Entry<AsynchronousTask, AsynchronousTask>> entries = AsyncFactory
+                .READY_ASYNC_REQUESTS.entrySet().iterator();
+
+        while (entries.hasNext()) {
+            Map.Entry<AsynchronousTask, AsynchronousTask> entry = entries.next();
+            AsynchronousTask asynchronousTask = entry.getValue();
+            entries.remove();
+            if (asynchronousTask.isRemoved) {
+                asynchronousTask.onCancelled();
+                return;
+            }
+            AsyncFactory.RUNNING_ASYNC_REQUESTS.put(asynchronousTask, asynchronousTask);
+            asynchronousTask.onPreExecute();
+            asynchronousTask.mTaskCallable = new TaskCallable<TProgress, TResult>(asynchronousTask);
+            mFuture = new FutureTask(asynchronousTask.mTaskCallable);
+            ThreadPoolSelector.getInstance().submit(mFuture);
+            if (AsyncFactory.RUNNING_ASYNC_REQUESTS.size() >= AsyncFactory.MAX_ASYNC_REQUESTS) {
+                return; // Reached max capacity.
+            }
+        }
     }
 
 }

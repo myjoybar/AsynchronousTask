@@ -19,7 +19,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     private void testAsynchronousTasks() {
 
         for (int i = 0; i < 100; i++) {
@@ -30,19 +29,19 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 protected void onPreExecute() {
                     super.onPreExecute();
-                    Log.d(TAG, "执行前");
+                    Log.d(TAG, "执行前" + finalI);
                 }
 
                 @Override
                 protected String doInBackground() {
-                    Log.d(TAG, "子线程：" + getThreadName() + "后台执行");
+                    Log.d(TAG, "子线程：" + getThreadName() + "后台执行" + finalI);
                     try {
-                        Thread.sleep(1 * 1000);
+                        Thread.sleep(5 * 1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                     this.publishProgress(finalI);
-                    return "A"+finalI+"  ";
+                    return "A" + finalI + "  ";
                 }
 
                 @Override
@@ -61,13 +60,13 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 protected void onCancelled() {
                     super.onCancelled();
-                    Log.d(TAG, getThreadName() + "任务取消" );
+                    Log.d(TAG, getThreadName() + "任务取消");
                 }
             };
 
 
             AsyncFactory.getInstance().produce(asynchronousTask);
-            if (i > 90) {
+            if (i > 70) {
                 boolean flag = asynchronousTask.cancel(false);
                 Log.d(TAG, "i>90, 取消=" + flag);
             }
