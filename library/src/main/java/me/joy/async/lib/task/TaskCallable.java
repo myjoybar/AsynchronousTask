@@ -21,7 +21,6 @@ public class TaskCallable<TProgress, TResult> implements Callable {
     private final AtomicBoolean mCancelled = new AtomicBoolean();
     private final AsynchronousTask asynchronousTask;
 
-
     public TaskCallable(AsynchronousTask asynchronousTask) {
         this.asynchronousTask = asynchronousTask;
     }
@@ -89,7 +88,6 @@ public class TaskCallable<TProgress, TResult> implements Callable {
         asynchronousTask.onPostExecute(result);
         asynchronousTask.promoteCalls();
     }
-
 
     private static Handler getMainHandler() {
         synchronized (AsynchronousTask.class) {

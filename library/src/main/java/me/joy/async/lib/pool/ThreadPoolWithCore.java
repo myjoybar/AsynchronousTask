@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 
 public class ThreadPoolWithCore {
-	private static final String TAG = "ProductLineThreadPool";
+	private static final String TAG = "ThreadPoolWithCore";
 	private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
 	// We want at least 2 threads and at most 4 threads in the core pool,
 	// preferring to have 1 less than the CPU count to avoid saturating
@@ -32,7 +32,7 @@ public class ThreadPoolWithCore {
 		private final AtomicInteger mCount = new AtomicInteger(1);
 
 		public Thread newThread(Runnable r) {
-			return new Thread(r, "ProductLineThreadPool #" + mCount.getAndIncrement());
+			return new Thread(r, "ThreadPoolWithCore #" + mCount.getAndIncrement());
 		}
 	};
 
@@ -40,7 +40,7 @@ public class ThreadPoolWithCore {
 
 		@Override
 		public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-			Log.w(TAG, "ProductLineThreadPool is full, discard this");
+			Log.w(TAG, "ThreadPoolWithCore is full, discard this");
 		}
 	}
 

@@ -1,11 +1,11 @@
 package me.joy.async.lib.task;
 
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.FutureTask;
 
-import me.joy.async.lib.factory.AsyncFactory;
 import me.joy.async.lib.pool.ThreadPoolSelector;
 
 
@@ -14,102 +14,98 @@ import me.joy.async.lib.pool.ThreadPoolSelector;
  */
 
 public abstract class AsynchronousTask<TProgress, TResult> {
+	private static final int MAX_ASYNC_REQUESTS = 64;
+	private final static Map<AsynchronousTask, AsynchronousTask> RUNNING_ASYNC_REQUESTS = new HashMap<>();
+	private final static Map<AsynchronousTask, AsynchronousTask> READY_ASYNC_REQUESTS = new HashMap<>();
 
-    private FutureTask<TResult> mFuture;
-    TaskCallable mTaskCallable;
-    boolean isRemoved;
+	private FutureTask<TResult> mFuture;
+	private TaskCallable mTaskCallable;
+	private boolean isRemoved;
 
-    protected void onPreExecute() {
+	protected void onPreExecute() {
 
-    }
+	}
 
-    protected abstract TResult doInBackground();
-
-
-    protected void onProgressUpdate(TProgress... values) {
-
-    }
-
-    protected void onPostExecute(TResult result) {
-
-    }
-
-    protected void onCancelled() {
-    }
-
-    public final void publishProgress(TProgress... values) {
-        if (null != mTaskCallable) {
-            mTaskCallable.publishProgress(values);
-        }
+	protected abstract TResult doInBackground();
 
 
-    }
+	protected void onProgressUpdate(TProgress... values) {
 
-    public final boolean cancel(boolean mayInterruptIfRunning) {
-        boolean flag = false;
-        if (null != mFuture) {
-            flag = mFuture.cancel(mayInterruptIfRunning);
-            mTaskCallable.cancel();
-            if (flag) {
-                this.onCancelled();
-            }
-        }
-        if (AsyncFactory.RUNNING_ASYNC_REQUESTS.containsValue(this)) {
-            AsyncFactory.RUNNING_ASYNC_REQUESTS.remove(this);
-        }
-        if (AsyncFactory.READY_ASYNC_REQUESTS.containsValue(this)) {
+	}
 
-            AsyncFactory.READY_ASYNC_REQUESTS.remove(this);
-        }
-        isRemoved = true;
-        return flag;
-    }
+	protected void onPostExecute(TResult result) {
 
+	}
 
-    synchronized public void produceWithCallable() {
-        if (AsyncFactory.RUNNING_ASYNC_REQUESTS.size() < AsyncFactory.MAX_ASYNC_REQUESTS) {
-            if (this.isRemoved) {
-                return;
-            }
-            AsyncFactory.RUNNING_ASYNC_REQUESTS.put(this, this);
-            this.onPreExecute();
-            mTaskCallable = new TaskCallable<TProgress, TResult>(this);
-            mFuture = new FutureTask(mTaskCallable);
-            ThreadPoolSelector.getInstance().submit(mFuture);
-        } else {
-            AsyncFactory.READY_ASYNC_REQUESTS.put(this, this);
-        }
+	protected void onCancelled() {
+	}
 
-    }
+	public final void publishProgress(TProgress... values) {
+		if (null != mTaskCallable) {
+			mTaskCallable.publishProgress(values);
+		}
+	}
+
+	public final boolean cancel(boolean mayInterruptIfRunning) {
+		boolean flag = false;
+		if (null != mFuture) {
+			flag = mFuture.cancel(mayInterruptIfRunning);
+			mTaskCallable.cancel();
+			if (flag) {
+				this.onCancelled();
+			}
+		}
+		if (RUNNING_ASYNC_REQUESTS.containsValue(this)) {
+			RUNNING_ASYNC_REQUESTS.remove(this);
+		}
+		if (READY_ASYNC_REQUESTS.containsValue(this)) {
+
+			READY_ASYNC_REQUESTS.remove(this);
+		}
+		isRemoved = true;
+		return flag;
+	}
 
 
-    public void promoteCalls() {
-        AsyncFactory.RUNNING_ASYNC_REQUESTS.remove(this);
-        if (AsyncFactory.RUNNING_ASYNC_REQUESTS.size() >= AsyncFactory.MAX_ASYNC_REQUESTS) {
-            return;
-        }
+	synchronized public void execute() {
+		if (RUNNING_ASYNC_REQUESTS.size() < MAX_ASYNC_REQUESTS) {
+			if (this.isRemoved) {
+				return;
+			}
+			RUNNING_ASYNC_REQUESTS.put(this, this);
+			this.onPreExecute();
+			mTaskCallable = new TaskCallable<TProgress, TResult>(this);
+			mFuture = new FutureTask(mTaskCallable);
+			ThreadPoolSelector.getInstance().submit(mFuture);
+		} else {
+			READY_ASYNC_REQUESTS.put(this, this);
+		}
+	}
 
 
-        Iterator<Map.Entry<AsynchronousTask, AsynchronousTask>> entries = AsyncFactory
-                .READY_ASYNC_REQUESTS.entrySet().iterator();
-
-        while (entries.hasNext()) {
-            Map.Entry<AsynchronousTask, AsynchronousTask> entry = entries.next();
-            AsynchronousTask asynchronousTask = entry.getValue();
-            entries.remove();
-            if (asynchronousTask.isRemoved) {
-                asynchronousTask.onCancelled();
-                return;
-            }
-            AsyncFactory.RUNNING_ASYNC_REQUESTS.put(asynchronousTask, asynchronousTask);
-            asynchronousTask.onPreExecute();
-            asynchronousTask.mTaskCallable = new TaskCallable<TProgress, TResult>(asynchronousTask);
-            mFuture = new FutureTask(asynchronousTask.mTaskCallable);
-            ThreadPoolSelector.getInstance().submit(mFuture);
-            if (AsyncFactory.RUNNING_ASYNC_REQUESTS.size() >= AsyncFactory.MAX_ASYNC_REQUESTS) {
-                return; // Reached max capacity.
-            }
-        }
-    }
+	protected void promoteCalls() {
+		RUNNING_ASYNC_REQUESTS.remove(this);
+		if (RUNNING_ASYNC_REQUESTS.size() >= MAX_ASYNC_REQUESTS) {
+			return;
+		}
+		Iterator<Map.Entry<AsynchronousTask, AsynchronousTask>> entries = READY_ASYNC_REQUESTS.entrySet().iterator();
+		while (entries.hasNext()) {
+			Map.Entry<AsynchronousTask, AsynchronousTask> entry = entries.next();
+			AsynchronousTask asynchronousTask = entry.getValue();
+			entries.remove();
+			if (asynchronousTask.isRemoved) {
+				asynchronousTask.onCancelled();
+				return;
+			}
+			RUNNING_ASYNC_REQUESTS.put(asynchronousTask, asynchronousTask);
+			asynchronousTask.onPreExecute();
+			asynchronousTask.mTaskCallable = new TaskCallable<TProgress, TResult>(asynchronousTask);
+			mFuture = new FutureTask(asynchronousTask.mTaskCallable);
+			ThreadPoolSelector.getInstance().submit(mFuture);
+			if (RUNNING_ASYNC_REQUESTS.size() >= MAX_ASYNC_REQUESTS) {
+				return; // Reached max capacity.
+			}
+		}
+	}
 
 }

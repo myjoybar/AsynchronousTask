@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
-import me.joy.async.lib.factory.AsyncFactory;
 import me.joy.async.lib.task.AsynchronousTask;
 
 
@@ -64,8 +63,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             };
 
-
-            AsyncFactory.getInstance().produce(asynchronousTask);
+            asynchronousTask.execute();
             if (i > 70) {
                 boolean flag = asynchronousTask.cancel(false);
                 Log.d(TAG, "i>90, 取消=" + flag);
