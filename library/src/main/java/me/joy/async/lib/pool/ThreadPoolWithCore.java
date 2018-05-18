@@ -1,7 +1,5 @@
 package me.joy.async.lib.pool;
 
-import android.util.Log;
-
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -10,6 +8,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import me.joy.async.lib.util.ALog;
 
 /**
  * Created by joybar on 2018/5/11.
@@ -40,7 +40,7 @@ public class ThreadPoolWithCore {
 
 		@Override
 		public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-			Log.w(TAG, "ThreadPoolWithCore is full, discard this");
+			ALog.print("ThreadPoolWithCore is full, discard this");
 		}
 	}
 
