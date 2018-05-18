@@ -14,9 +14,9 @@ import me.joy.async.lib.pool.ThreadPoolSelector;
  */
 
 public abstract class AsynchronousTask<TProgress, TResult> {
-	private static final int MAX_ASYNC_REQUESTS = 64;
-	private final static Map<AsynchronousTask, AsynchronousTask> RUNNING_ASYNC_REQUESTS = new HashMap<>();
-	private final static Map<AsynchronousTask, AsynchronousTask> READY_ASYNC_REQUESTS = new HashMap<>();
+	private static final int MAX_ASYNC_TASKS = 64;
+	private final static Map<AsynchronousTask, AsynchronousTask> RUNNING_ASYNC_TASKS = new HashMap<>();
+	private final static Map<AsynchronousTask, AsynchronousTask> READY_ASYNC_TASKS = new HashMap<>();
 
 	private FutureTask<TResult> mFuture;
 	private TaskCallable mTaskCallable;
@@ -55,12 +55,12 @@ public abstract class AsynchronousTask<TProgress, TResult> {
 				this.onCancelled();
 			}
 		}
-		if (RUNNING_ASYNC_REQUESTS.containsValue(this)) {
-			RUNNING_ASYNC_REQUESTS.remove(this);
+		if (RUNNING_ASYNC_TASKS.containsValue(this)) {
+			RUNNING_ASYNC_TASKS.remove(this);
 		}
-		if (READY_ASYNC_REQUESTS.containsValue(this)) {
+		if (READY_ASYNC_TASKS.containsValue(this)) {
 
-			READY_ASYNC_REQUESTS.remove(this);
+			READY_ASYNC_TASKS.remove(this);
 		}
 		isRemoved = true;
 		return flag;
@@ -68,27 +68,27 @@ public abstract class AsynchronousTask<TProgress, TResult> {
 
 
 	synchronized public void execute() {
-		if (RUNNING_ASYNC_REQUESTS.size() < MAX_ASYNC_REQUESTS) {
+		if (RUNNING_ASYNC_TASKS.size() < MAX_ASYNC_TASKS) {
 			if (this.isRemoved) {
 				return;
 			}
-			RUNNING_ASYNC_REQUESTS.put(this, this);
+			RUNNING_ASYNC_TASKS.put(this, this);
 			this.onPreExecute();
 			mTaskCallable = new TaskCallable<TProgress, TResult>(this);
 			mFuture = new FutureTask(mTaskCallable);
 			ThreadPoolSelector.getInstance().submit(mFuture);
 		} else {
-			READY_ASYNC_REQUESTS.put(this, this);
+			READY_ASYNC_TASKS.put(this, this);
 		}
 	}
 
 
-	protected void promoteCalls() {
-		RUNNING_ASYNC_REQUESTS.remove(this);
-		if (RUNNING_ASYNC_REQUESTS.size() >= MAX_ASYNC_REQUESTS) {
+	protected void promoteTasks() {
+		RUNNING_ASYNC_TASKS.remove(this);
+		if (RUNNING_ASYNC_TASKS.size() >= MAX_ASYNC_TASKS) {
 			return;
 		}
-		Iterator<Map.Entry<AsynchronousTask, AsynchronousTask>> entries = READY_ASYNC_REQUESTS.entrySet().iterator();
+		Iterator<Map.Entry<AsynchronousTask, AsynchronousTask>> entries = READY_ASYNC_TASKS.entrySet().iterator();
 		while (entries.hasNext()) {
 			Map.Entry<AsynchronousTask, AsynchronousTask> entry = entries.next();
 			AsynchronousTask asynchronousTask = entry.getValue();
@@ -97,12 +97,12 @@ public abstract class AsynchronousTask<TProgress, TResult> {
 				asynchronousTask.onCancelled();
 				return;
 			}
-			RUNNING_ASYNC_REQUESTS.put(asynchronousTask, asynchronousTask);
+			RUNNING_ASYNC_TASKS.put(asynchronousTask, asynchronousTask);
 			asynchronousTask.onPreExecute();
 			asynchronousTask.mTaskCallable = new TaskCallable<TProgress, TResult>(asynchronousTask);
 			mFuture = new FutureTask(asynchronousTask.mTaskCallable);
 			ThreadPoolSelector.getInstance().submit(mFuture);
-			if (RUNNING_ASYNC_REQUESTS.size() >= MAX_ASYNC_REQUESTS) {
+			if (RUNNING_ASYNC_TASKS.size() >= MAX_ASYNC_TASKS) {
 				return; // Reached max capacity.
 			}
 		}

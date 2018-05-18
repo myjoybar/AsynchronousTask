@@ -86,7 +86,7 @@ public class TaskCallable<TProgress, TResult> implements Callable {
 
     private void finish(TResult result) {
         asynchronousTask.onPostExecute(result);
-        asynchronousTask.promoteCalls();
+        asynchronousTask.promoteTasks();
     }
 
     private static Handler getMainHandler() {
