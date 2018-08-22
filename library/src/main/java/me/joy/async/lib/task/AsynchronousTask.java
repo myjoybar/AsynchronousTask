@@ -1,11 +1,16 @@
 package me.joy.async.lib.task;
 
 
+import android.content.Context;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.FutureTask;
 
+import me.joy.async.lib.lifecycle.LifecycleMonitor;
 import me.joy.async.lib.pool.ThreadPoolSelector;
 
 
@@ -23,12 +28,44 @@ public abstract class AsynchronousTask<TProgress, TResult> {
 	private TaskCallable mTaskCallable;
 	private boolean isRemoved;
 
+	public AsynchronousTask() {
+		this(MAX_ASYNC_TASKS);
+	}
+
 	public AsynchronousTask(int taskNumber) {
 		MAX_TASK_NUMBER = taskNumber;
 	}
 
-	public AsynchronousTask() {
+	public AsynchronousTask(Context context) {
+		this(MAX_ASYNC_TASKS);
 	}
+
+	public AsynchronousTask(android.app.Fragment fragment) {
+		this(MAX_ASYNC_TASKS);
+	}
+
+	public AsynchronousTask(android.support.v4.app.Fragment fragment) {
+		this(MAX_ASYNC_TASKS);
+	}
+
+	public AsynchronousTask(Context context, int taskNumber) {
+		MAX_TASK_NUMBER = taskNumber;
+		LifecycleMonitor.addMonitor(context, this);
+	}
+
+	@RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+	public AsynchronousTask(android.app.Fragment fragment, int taskNumber) {
+		MAX_TASK_NUMBER = taskNumber;
+		LifecycleMonitor.addMonitor(fragment, this);
+
+	}
+
+	public AsynchronousTask(android.support.v4.app.Fragment fragment, int taskNumber) {
+		MAX_TASK_NUMBER = taskNumber;
+		LifecycleMonitor.addMonitor(fragment, this);
+
+	}
+
 
 	protected void onPreExecute() {
 
@@ -115,5 +152,23 @@ public abstract class AsynchronousTask<TProgress, TResult> {
 			}
 		}
 	}
+
+//	@Override
+//	public int hashCode() {
+//		return module.hashCode() + path.hashCode();
+//	}
+//
+//	@Override
+//	public boolean equals(Object obj) {
+//
+//		if (obj == this) {
+//			return true;
+//		}
+//		if (obj instanceof AsynchronousTask) {
+//			AsynchronousTask rule = (AsynchronousTask) obj;
+//			return (module.equals(rule.module) && path.equals(rule.path) && module.equals(rule.module));
+//		}
+//		return super.equals(obj);
+//	}
 
 }
