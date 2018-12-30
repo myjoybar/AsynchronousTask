@@ -93,7 +93,9 @@ public class TaskRunnable<TProgress, TResult> implements Runnable {
     }
 
     private void finish(TResult result) {
-        asynchronousTask.onPostExecute(result);
+        if (!isCancelled()) {
+            asynchronousTask.onPostExecute(result);
+        }
     }
 
 

@@ -5,13 +5,14 @@ Asynchronous Task
 
 ## Features
  - 一个类似于asyncTask的异步任务执行器
+ - 当Activity或者Fragment onDestroy时，task能够自动取消
 
  
 ## Installation
 ### Gradle Dependency
 #####   Add the library to your project build.gradle
 ```gradle
-compile 'com.joybar.asynchronoustask:library:1.0.3'
+compile 'com.joybar.asynchronoustask:library:1.0.8'
 ```
 
 
@@ -19,10 +20,37 @@ compile 'com.joybar.asynchronoustask:library:1.0.3'
 
 ## Sample Usage
 
-1 初始化AsynchronousTask
+1 两种构造函数如下,如果传入context，则会监听当期Activity或者Fragment的生命周期
 
 ```java
-AsynchronousTask asynchronousTask = new AsynchronousTask<Integer, String>() {
+
+  public AsynchronousTask() {
+        this(null);
+    }
+
+    /**
+     * @param context
+     * if context is not null, the task will be cancel when the activity onDestroy
+     */
+    public AsynchronousTask(Context context) {
+        if (context != null) {
+            registerLifecycleListener(context);
+            if (!(context instanceof Application)) {
+                if (context instanceof FragmentActivity) {
+                    weakActivity = new WeakReference<Activity>((FragmentActivity) context);
+                } else if (context instanceof Activity) {
+                    weakActivity = new WeakReference<Activity>((Activity) context);
+                }
+            }
+        }
+    }
+
+```
+
+2 初始化AsynchronousTask
+
+```java
+AsynchronousTask asynchronousTask = new AsynchronousTask<Integer, String>(MainActivity.this) {
 
     @Override
     protected void onPreExecute() {
@@ -63,13 +91,13 @@ AsynchronousTask asynchronousTask = new AsynchronousTask<Integer, String>() {
 };
 
 ```
-2 执行asynchronousTask
+3 执行asynchronousTask
 
 ```java
 AsyncFactory.getInstance().produce(asynchronousTask);
 
 ```
-3 取消执行执行asynchronousTask
+4 取消执行执行asynchronousTask
 
 ```java
 asynchronousTask.cancel(false);

@@ -27,8 +27,8 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-
     implementation 'com.android.support:appcompat-v7:26.1.0'
+    api 'com.joybar.lifecycle:lifecyclelistener:1.0.7'
 }
 
 apply from: 'push.gradle'
